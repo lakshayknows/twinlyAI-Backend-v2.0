@@ -1,6 +1,7 @@
 # Web Framework & Server
 fastapi
 uvicorn[standard]
+slowapi
 
 # Database (MongoDB)
 pymongo
