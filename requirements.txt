@@ -1,0 +1,42 @@
+# Web Framework & Server
+fastapi
+uvicorn[standard]
+
+# Database (MongoDB)
+pymongo
+motor
+
+# Configuration and Security
+python-dotenv
+passlib
+bcrypt==4.0.1
+python-jose[cryptography]
+
+# AI and RAG Pipeline
+langchain
+langchain-community
+langchain-groq
+langchain-core
+langchain-text-splitters
+langchain-huggingface
+faiss-cpu
+sentence-transformers
+pdfplumber
+python-docx
+groq
+qdrant-client
+langchain-qdrant
+langchain-experimental
+
+# Pydantic for data validation
+pydantic
+pydantic-settings
+email-validator
+
+# HTTP Client (REQUIRED for Authlib)
+httpx
+
+python-multipart
+Authlib
+itsdangerous
+edge-tts

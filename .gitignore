@@ -1,0 +1,55 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pycache
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# IDE & OS
+.vscode/
+.idea/
+*.sw[op]
+.DS_Store
+Thumbs.db
+
+# Logs & debug files
+*.log
+backend_debug*.log
+backend_debug*.txt
+out2.txt
+output_test_req.txt
+
+# Test scripts (scratch files)
+test_cors.py
+test_cors2.py
+test_req.py
+test_token_gen.py
+Wildcard.py
+rebuild_index.py
+
+# FAISS / vector index data (large binary files, rebuild on deploy)
+data/faiss_index/
+data/*.index
+data/*.pkl
+
+# HuggingFace / SentenceTransformers model cache
+models/
+.cache/
