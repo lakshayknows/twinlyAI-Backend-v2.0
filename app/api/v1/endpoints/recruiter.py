@@ -57,12 +57,11 @@ async def get_all_candidates(
         raise HTTPException(status_code=500, detail=f"Error fetching candidates: {str(e)}")
 
 @router.post("/search")
-@limiter.limit("5/minute")
+@limiter.limit("20/minute")
 async def search_candidates(
     request: Request,
     search_request: SearchRequest,  
     current_user: User = Depends(get_current_user),
-    _tier: User = Depends(check_tier("pro"))
 ):
     if current_user.role != "recruiter":
         raise HTTPException(status_code=403, detail="Only recruiters can search candidates")
