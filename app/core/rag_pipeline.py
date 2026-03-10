@@ -10,7 +10,7 @@ import shutil
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
@@ -29,9 +29,8 @@ _EMBEDDINGS_MODEL = None
 def get_embeddings_model():
     global _EMBEDDINGS_MODEL
     if _EMBEDDINGS_MODEL is None:
-        _EMBEDDINGS_MODEL = HuggingFaceInferenceAPIEmbeddings(
-            api_key=settings.HUGGINGFACE_API_KEY,
-            model_name="BAAI/bge-small-en-v1.5"
+        _EMBEDDINGS_MODEL = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
     return _EMBEDDINGS_MODEL
 
@@ -96,7 +95,7 @@ class RAGPipeline:
         self.collection_name = f"bot_{self.bot_id}"
         
         self.llm = ChatGroq(
-            model_name="meta-llama/llama-4-maverick-17b-128e-instruct", 
+            model_name="openai/gpt-oss-120b", 
             temperature=0.7, 
             groq_api_key=settings.GROQ_API_KEY
         )
@@ -199,7 +198,7 @@ You are "{self.bot_name}," a professional AI assistant and technical recruiter. 
         ])
         
         extraction_llm = ChatGroq(
-            model_name="meta-llama/llama-4-maverick-17b-128e-instruct",
+            model_name="openai/gpt-oss-120b",
             temperature=0.0, 
             groq_api_key=settings.GROQ_API_KEY
         )
@@ -237,7 +236,7 @@ You are "{self.bot_name}," a professional AI assistant and technical recruiter. 
         ])
         
         extraction_llm = ChatGroq(
-            model_name="meta-llama/llama-4-maverick-17b-128e-instruct",
+            model_name="openai/gpt-oss-120b",
             temperature=0.0, 
             groq_api_key=settings.GROQ_API_KEY
         )
