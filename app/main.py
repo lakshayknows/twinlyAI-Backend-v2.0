@@ -3,7 +3,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from app.api.v1.endpoints import auth, bots, api_keys, users, oauth, recruiter, webhooks
+from app.api.v1.endpoints import auth, bots, api_keys, users, oauth, recruiter, webhooks, connectors
 from app.core.rate_limit import setup_rate_limiting
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -73,6 +73,7 @@ app.include_router(api_keys.router, prefix="/api/v1/api-keys", tags=["api_keys"]
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(recruiter.router, prefix="/api/v1/recruiter", tags=["recruiter"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
+app.include_router(connectors.router, prefix="/api/v1/connectors", tags=["connectors"])
 
 @app.get("/")
 async def root():
