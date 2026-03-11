@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.user import User, UserUpdate
 from app.api.v1.deps import get_current_user
 from app.db.session import users_collection
+from bson import ObjectId
 
 router = APIRouter()
 
@@ -48,7 +49,7 @@ async def upgrade_me(
     
     valid_tiers = ["free", "pro", "plus"]
     if tier not in valid_tiers:
-        raise HTTPException(status_code=400, detail=f"Invalid tier. Must be one of {valid_tiers}")
+        raise HTTPException(status_code=400, detail="Invalid tier. Must be one of {}".format(valid_tiers))
 
     await users_collection.update_one(
         {"_id": ObjectId(current_user.id)},

@@ -39,7 +39,7 @@ def generate_resume_pdf(candidate_data: dict, output_path: Path):
     c.drawString(50, height - 50, candidate_data["name"])
     
     c.setFont("Helvetica", 10)
-    c.drawString(50, height - 65, f"Location: {candidate_data['city']} | Education: {candidate_data['college']}")
+    c.drawString(50, height - 65, "Location: %s | Education: %s" % (candidate_data['city'], candidate_data['college']))
     
     # Summary
     c.setFont("Helvetica-Bold", 12)
@@ -83,9 +83,9 @@ def generate_resume_pdf(candidate_data: dict, output_path: Path):
     if "projects" in candidate_data:
         for project in candidate_data["projects"]:
             text_object.setFont("Helvetica-Bold", 10)
-            text_object.textLine(f"• {project['title']}")
+            text_object.textLine("• %s" % project['title'])
             text_object.setFont("Helvetica", 10)
-            text_object.textLine(f"  {project['desc']}")
+            text_object.textLine("  %s" % project['desc'])
             text_object.textLine("")
     else:
         text_object.textLine("• Completed various academic projects related to software development and engineering.")
@@ -101,7 +101,7 @@ SURNAMES = ["Sharma", "Verma", "Gupta", "Malhotra", "Kapoor", "Singh", "Reddy", 
 def get_random_name():
     first = random.choice(INDIAN_MALE_NAMES + INDIAN_FEMALE_NAMES)
     last = random.choice(SURNAMES)
-    return f"{first} {last}"
+    return "{} {}".format(first, last)
 
 async def seed():
     print("🚀 Starting Candidate Seeding Process...")
@@ -118,7 +118,7 @@ async def seed():
     user_id = str(dummy_user["_id"])
 
     # --- TIER 1: GENERATE 50 DEMO PROFILES ---
-    print(f"📦 Generating {NUM_DEMO} Demo Profiles...")
+    print("📦 Generating %d Demo Profiles..." % NUM_DEMO)
     demo_count = 0
     for i in range(NUM_DEMO):
         is_cse = random.random() < 0.95
@@ -128,7 +128,13 @@ async def seed():
         skills = random.sample(SKILLS_CSE if is_cse else SKILLS_MIXED, 6)
         
         name = get_random_name()
-        summary = f"Highly motivated {college} student specializing in {'Computer Science' if is_cse else 'Engineering'}. Proven track record in {skills[0]} and {skills[1]}. Seeking opportunities in {city}."
+        summary = "Highly motivated {} student specializing in {}. Proven track record in {} and {}. Seeking opportunities in {}.".format(
+            college,
+            'Computer Science' if is_cse else 'Engineering',
+            skills[0],
+            skills[1],
+            city
+        )
         
         candidate_data = {
             "name": name,
@@ -146,7 +152,7 @@ async def seed():
             "skills": skills,
             "summary": summary,
             "experience_years": candidate_data["experience_years"],
-            "bio": f"I am {name}, a student from {college}.",
+            "bio": "I am {}, a student from {}.".format(name, college),
             "is_active": True,
             "created_at": "2024-03-04T00:00:00Z"
         }
@@ -154,18 +160,18 @@ async def seed():
         bot_id = str(result.inserted_id)
 
         # Generate PDF
-        pdf_path = storage_root / f"{bot_id}.pdf"
+        pdf_path = storage_root / "{}.pdf".format(bot_id)
         generate_resume_pdf(candidate_data, pdf_path)
         
         # Add to Global Index (Semantic Only)
-        profile_text = f"Name: {name}. College: {college}. Skills: {', '.join(skills)}. Summary: {summary}"
+        profile_text = "Name: {}. College: {}. Skills: {}. Summary: {}".format(name, college, ', '.join(skills), summary)
         GlobalRecruiterIndex().add_candidate_profile(bot_id, profile_text)
         
         demo_count += 1
-        if demo_count % 10 == 0: print(f"  Processed {demo_count}/{NUM_DEMO}...")
+        if demo_count % 10 == 0: print("  Processed %d/%d..." % (demo_count, NUM_DEMO))
 
     # --- TIER 2: GENERATE 10 POWER PROFILES ---
-    print(f"🔥 Generating {NUM_POWER} Power Interaction Profiles...")
+    print("🔥 Generating %d Power Interaction Profiles..." % NUM_POWER)
     for i in range(NUM_POWER):
         name = get_random_name()
         college = random.choice(COLLEGES["Tier 1"] + COLLEGES["Tier 2"])
@@ -174,12 +180,12 @@ async def seed():
         
         # Deep project history for RAG
         projects = [
-            {"title": "Real-time Distributed Chat", "desc": f"Built a high-concurrency chat app using {skills[0]} and {skills[-1]}. Handled 10k+ concurrent connections."},
+            {"title": "Real-time Distributed Chat", "desc": "Built a high-concurrency chat app using {} and {}. Handled 10k+ concurrent connections.".format(skills[0], skills[-1])},
             {"title": "AI Resume Parser", "desc": "Implemented a RAG-based extraction engine using LangChain and Groq LLM."},
             {"title": "Cloud Native E-commerce", "desc": "Scaled a microservices architecture on AWS using Docker and Kubernetes."}
         ]
         
-        summary = f"Full-stack innovator from {college} with extensive experience in {', '.join(skills[:3])}. Passionate about building scalable cloud architectures and AI-driven internal tools."
+        summary = "Full-stack innovator from {} with extensive experience in {}. Passionate about building scalable cloud architectures and AI-driven internal tools.".format(college, ', '.join(skills[:3]))
         
         candidate_data = {
             "name": name,
@@ -198,7 +204,7 @@ async def seed():
             "skills": skills,
             "summary": summary,
             "experience_years": candidate_data["experience_years"],
-            "bio": f"I am {name}. I have worked on deep technical projects like {projects[0]['title']}.",
+            "bio": "I am {}. I have worked on deep technical projects like {}.".format(name, projects[0]['title']),
             "is_active": True,
             "created_at": "2024-03-04T00:00:00Z"
         }
@@ -206,23 +212,23 @@ async def seed():
         bot_id = str(result.inserted_id)
 
         # Generate PDF
-        pdf_path = storage_root / f"{bot_id}.pdf"
+        pdf_path = storage_root / "{}.pdf".format(bot_id)
         generate_resume_pdf(candidate_data, pdf_path)
         
         # --- DEEP RAG PROCESSING ---
         # This triggers the Semantic Chunker and Qdrant population
-        pipeline = RAGPipeline(bot_id, user_id, f"{name} AI")
+        pipeline = RAGPipeline(bot_id, user_id, "{} AI".format(name))
         pipeline.process_file(str(pdf_path))
         
         # Add to Global Index
-        profile_text = f"Name: {name}. College: {college}. Skills: {', '.join(skills)}. Projects: {projects[0]['title']}, {projects[1]['title']}. Summary: {summary}"
+        profile_text = "Name: {}. College: {}. Skills: {}. Projects: {}, {}. Summary: {}".format(name, college, ', '.join(skills), projects[0]['title'], projects[1]['title'], summary)
         GlobalRecruiterIndex().add_candidate_profile(bot_id, profile_text)
         
-        print(f"  Power User {i+1}/{NUM_POWER} ('{name}') Ready.")
+        print("  Power User %d/%d ('%s') Ready." % (i+1, NUM_POWER, name))
 
     print("\n✅ SEEDING COMPLETE!")
-    print(f"Total Profiles: {NUM_DEMO + NUM_POWER}")
-    print(f"Artifacts saved in: {storage_root}")
+    print("Total Profiles: %d" % (NUM_DEMO + NUM_POWER))
+    print("Artifacts saved in: %s" % storage_root)
 
 if __name__ == "__main__":
     asyncio.run(seed())

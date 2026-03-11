@@ -37,7 +37,7 @@ async def authorize_github_connector(request: Request, current_user: User = Depe
     else:
         scheme = "https"
         
-    redirect_uri = f"{scheme}://{host}/api/v1/connectors/github/callback"
+    redirect_uri = "{}://{}/api/v1/connectors/github/callback".format(scheme, host)
     
     # Store user_id in session to link the OAuth callback to the correct user securely
     request.session['connector_setup_user_id'] = current_user.id
@@ -82,7 +82,7 @@ async def github_connector_callback(request: Request):
     # Clean up session
     del request.session['connector_setup_user_id']
     
-    return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard/connectors?status=success")
+    return RedirectResponse(url="{}/dashboard/connectors?status=success".format(settings.FRONTEND_URL))
 
 @router.get('/')
 async def list_connectors(current_user: User = Depends(get_current_user)):
@@ -118,7 +118,7 @@ async def list_github_repositories(current_user: User = Depends(get_current_user
     # Use httpx to query GitHub API for user repos
     async with httpx.AsyncClient() as client:
         headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": "Bearer {}".format(token),
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "TwinlyAI-Connector"
         }
@@ -154,14 +154,14 @@ async def sync_github_repository(owner: str, repo: str, current_user: User = Dep
     if not connector:
         raise HTTPException(status_code=404, detail="GitHub connector not configured.")
 
-    repo_name = f"{owner}/{repo}"
+    repo_name = "{}/{}".format(owner, repo)
     
     # Check if a webhook exists, if not, create one using their token (omitted for brevity, assume manual or standard)
     
     # Fire off Celery Task
     ingest_github_repo.delay(current_user.id, repo_name)
     
-    return {"message": f"Sync started for {repo_name}", "status": "indexing"}
+    return {"message": "Sync started for {}".format(repo_name), "status": "indexing"}
 
 @router.post('/github/webhooks/callback')
 async def github_webhook_callback(request: Request):

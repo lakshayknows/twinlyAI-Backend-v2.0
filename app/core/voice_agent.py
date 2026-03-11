@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+import logging
 import edge_tts
 import re
 from agora_token_builder import RtcTokenBuilder
@@ -40,20 +41,20 @@ class VoiceAgentEventHandler(agorartc.RtcEngineEventHandlerBase):
         self.agent = agent
 
     def onJoinChannelSuccess(self, channel, uid, elapsed):
-        print(f"AI Agent joined channel '{channel}' with UID {uid}")
+        logging.info("AI Agent joined channel '%s' with UID %s", channel, uid)
         self.agent.is_joined = True
 
     def onLeaveChannel(self, stats):
-        print(f"AI Agent left channel")
+        logging.info("AI Agent left channel")
         self.agent.is_joined = False
 
     def onUserJoined(self, uid, elapsed):
-        print(f"Recruiter (UID: {uid}) joined the call.")
+        logging.info("Recruiter (UID: %s) joined the call.", uid)
         self.agent.recruiter_uid = uid
         # The AI will now start listening to this user
 
     def onUserOffline(self, uid, reason):
-        print(f"Recruiter (UID: {uid}) left the call.")
+        logging.info("Recruiter (UID: %s) left the call.", uid)
         self.agent.recruiter_uid = None
         # Once the recruiter leaves, the AI should also leave
         asyncio.run(self.agent.leave_call()) # Run async leave
@@ -122,7 +123,7 @@ class VoiceAgent:
         
         self.rtc_engine.joinChannel(token, self.channel_name, ai_uid, options)
         # --- END OF FIX ---
-        print(f"AI Agent '{self.bot_name}' attempting to join channel: {self.channel_name}")
+        logging.info("AI Agent '%s' attempting to join channel: %s", self.bot_name, self.channel_name)
         
     async def leave_call(self):
         """Disconnects the AI bot from the Agora channel."""
@@ -142,7 +143,7 @@ class VoiceAgent:
                 response_text += chunk
             
             clean_response = re.sub(r"<think>.*?</think>", "", response_text, flags=re.DOTALL).strip()
-            print(f"AI Bot: {clean_response}")
+            logging.debug("AI Bot: %s", clean_response[:200])
 
             # 4. Text-to-Speech (TTS)
             try:
@@ -150,7 +151,7 @@ class VoiceAgent:
                 await communicate.save(TTS_OUTPUT_FILE)
                 return clean_response
             except Exception as e:
-                print(f"TTS Error: {e}")
+                logging.exception("TTS Error in voice agent")
                 return None
         
         while True:
@@ -164,7 +165,7 @@ class VoiceAgent:
             
             # --- 1. SIMULATE STT ---
             simulated_transcription = "What are your key skills?"
-            print(f"Recruiter (simulated): {simulated_transcription}")
+            logging.debug("Recruiter (simulated): %s", simulated_transcription)
             
             # --- 2 & 3. Run Async RAG + TTS ---
             try:
@@ -173,12 +174,12 @@ class VoiceAgent:
                     self.is_processing = False
                     continue
             except Exception as e:
-                print(f"Async pipeline error: {e}")
+                logging.exception("Async pipeline error")
                 self.is_processing = False
                 continue
             
             # --- 4. Publish AI Audio to Channel (Simulated) ---
-            print(f"AI Bot: (Speaking audio from {TTS_OUTPUT_FILE})")
+            logging.debug("AI Bot: (Speaking audio from %s)", TTS_OUTPUT_FILE)
             
             # This simulates the time it takes to "speak" the response.
             time.sleep(len(clean_response.split()) / 3.0)

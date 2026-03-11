@@ -1,5 +1,6 @@
 # app/api/v1/deps.py
 
+import logging
 from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import APIKeyHeader
 from jose import JWTError, jwt
@@ -38,7 +39,7 @@ async def get_authenticated_user(
             if user:
                 return user
         except JWTError:
-            pass
+            logging.debug("JWT token validation failed")
 
     # 2. If token auth fails or is not provided, try to authenticate with API key
     if api_key:
@@ -95,7 +96,7 @@ async def check_subscription_tier(
     if tiers.index(current_user.subscription_tier) < tiers.index(required_tier):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"{required_tier.capitalize()} subscription required for this feature"
+            detail="{} subscription required for this feature".format(required_tier.capitalize())
         )
     return current_user
 

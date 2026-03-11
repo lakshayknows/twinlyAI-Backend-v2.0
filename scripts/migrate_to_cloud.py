@@ -20,7 +20,7 @@ async def migrate():
 
     # 1. Fetch all bots from MongoDB
     bots = await bots_collection.find({}).to_list(length=1000)
-    print(f"📄 Found {len(bots)} candidates in database.")
+    print("📄 Found %d candidates in database." % len(bots))
     
     storage_root = Path("data") / "seeded_resumes"
     processed = 0
@@ -31,15 +31,15 @@ async def migrate():
         name = bot.get("name", "Unknown")
         
         # Determine local path
-        local_pdf = storage_root / f"{bot_id}.pdf"
+        local_pdf = storage_root / "{}.pdf".format(bot_id)
         
         if not local_pdf.exists():
             # Try another common path used in the app
             # (data/userId/botId/resume.pdf) - but seeding used seeded_resumes
-            print(f"  ⚠️ Could not find local PDF for {name} ({bot_id}) at {local_pdf}")
+            print("  ⚠️ Could not find local PDF for %s (%s) at %s" % (name, bot_id, local_pdf))
             continue
             
-        print(f"  📤 Uploading resume for {name}...")
+        print("  📤 Uploading resume for %s..." % name)
         try:
             pdf_url, thumb_url = StorageService.upload_file(
                 str(local_pdf), 
@@ -57,12 +57,12 @@ async def migrate():
             )
             processed += 1
         except Exception as e:
-            print(f"  ❌ Error migrating {name}: {e}")
+            print("  ❌ Error migrating %s" % name)
             errors += 1
 
-    print(f"\n✅ MIGRATION COMPLETE!")
-    print(f"Total processed: {processed}")
-    print(f"Errors: {errors}")
+    print("\n✅ MIGRATION COMPLETE!")
+    print("Total processed: %d" % processed)
+    print("Errors: %d" % errors)
 
 if __name__ == "__main__":
     asyncio.run(migrate())

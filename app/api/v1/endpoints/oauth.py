@@ -41,7 +41,7 @@ async def login_via_provider(request: Request, provider: str):
     else:
         scheme = "https"
         
-    redirect_uri = f"{scheme}://{host}/api/v1/oauth/auth/{provider}"
+    redirect_uri = "{}://{}/api/v1/oauth/auth/{}".format(scheme, host, provider)
     
     return await oauth.create_client(provider).authorize_redirect(request, redirect_uri)
 
@@ -78,5 +78,5 @@ async def auth_callback(request: Request, provider: str):
     )
     
     # --- FIX: Dynamic Redirect to Frontend ---
-    response = RedirectResponse(url=f"{settings.FRONTEND_URL}/login?token={access_token}")
+    response = RedirectResponse(url="{}/login?token={}".format(settings.FRONTEND_URL, access_token))
     return response

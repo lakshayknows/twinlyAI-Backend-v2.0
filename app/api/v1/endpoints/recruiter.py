@@ -1,5 +1,6 @@
 # app/api/v1/endpoints/recruiter.py
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.db.session import bots_collection
 from app.schemas.bot import Bot
@@ -52,9 +53,9 @@ async def get_all_candidates(
             
         return formatted_results
 
-    except Exception as e:
-        print(f"Fetch Error: {str(e)}") 
-        raise HTTPException(status_code=500, detail=f"Error fetching candidates: {str(e)}")
+    except Exception:
+        logging.exception("Error fetching candidates")
+        raise HTTPException(status_code=500, detail="Error fetching candidates.")
 
 @router.post("/search")
 @limiter.limit("20/minute")
@@ -77,7 +78,7 @@ async def search_candidates(
     except RuntimeError as e:
         # Vector search failed (HuggingFace API down / Qdrant issue).
         # Fall back to MongoDB text search so recruiters always get results.
-        print(f"[/search] Vector search failed, falling back to MongoDB text search: {e}")
+        logging.warning("[/search] Vector search failed, falling back to MongoDB text search: %s", type(e).__name__)
         try:
             query_words = search_request.query.strip().split()
             regex_pattern = "|".join(query_words)
@@ -107,12 +108,12 @@ async def search_candidates(
                 })
             return formatted_fallback
         except Exception as fallback_err:
-            print(f"[/search] MongoDB fallback also failed: {fallback_err}")
-            raise HTTPException(status_code=500, detail=f"Search unavailable: {str(e)}")
+            logging.exception("[/search] MongoDB fallback also failed")
+            raise HTTPException(status_code=500, detail="Search is currently unavailable.")
 
-    except Exception as e:
-        print(f"[/search] Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error performing search: {str(e)}")
+    except Exception:
+        logging.exception("[/search] Unexpected error")
+        raise HTTPException(status_code=500, detail="Error performing search.")
 
     try:
         if not matching_bot_ids:
@@ -150,6 +151,6 @@ async def search_candidates(
 
         return formatted_results
 
-    except Exception as e:
-        print(f"[/search] MongoDB fetch error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching candidate details: {str(e)}")
+    except Exception:
+        logging.exception("[/search] MongoDB fetch error")
+        raise HTTPException(status_code=500, detail="Error fetching candidate details.")

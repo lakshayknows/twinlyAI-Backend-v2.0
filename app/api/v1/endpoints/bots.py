@@ -3,6 +3,7 @@
 import os
 import shutil
 import re
+import logging
 from typing import List
 from bson import ObjectId
 
@@ -23,7 +24,7 @@ from app.core.config import settings
 try:
     groq_client = AsyncGroq(api_key=settings.GROQ_API_KEY)
 except Exception as e:
-    print(f"Warning: Groq client failed to initialize for Whisper STT: {e}")
+    logging.warning("Groq client failed to initialize for Whisper STT: %s", type(e).__name__)
     groq_client = None
 
 from app.api.v1.deps import get_current_user, get_authenticated_user
@@ -57,23 +58,22 @@ async def create_bot(bot_in: BotCreate, current_user: User = Depends(get_current
         result = await bots_collection.insert_one(bot_doc)
         created_bot = await bots_collection.find_one({"_id": result.inserted_id})
         return created_bot
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Create bot error: {str(e)}")
+    except Exception:
+        logging.exception("Create bot error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while creating the bot.")
 
 @router.post("/{bot_id}/upload", status_code=status.HTTP_200_OK)
 async def upload_resume(bot_id: str, file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
-    print(f"[UPLOAD] bot_id={bot_id!r}  current_user.id={current_user.id!r}")
+    logging.debug("[UPLOAD] bot_id=%s  current_user.id=%s", bot_id, current_user.id)
     try:
         bot = await bots_collection.find_one({"_id": ObjectId(bot_id), "user_id": str(current_user.id)})
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid bot ID: {e}")
+        raise HTTPException(status_code=400, detail="Invalid bot ID format.")
 
     if not bot:
         # Fallback: look up by bot_id only and print what we find, to help diagnose mismatches
         any_bot = await bots_collection.find_one({"_id": ObjectId(bot_id)})
-        print(f"[UPLOAD] Bot not found with user match. Bot by ID only: {any_bot}")
+        logging.debug("[UPLOAD] Bot not found with user match. Bot by ID only: %s", bool(any_bot))
         raise HTTPException(status_code=404, detail="Bot not found")
 
     pipeline = RAGPipeline(bot_id=bot_id, user_id=str(current_user.id), bot_name=bot["name"])
@@ -88,7 +88,7 @@ async def upload_resume(bot_id: str, file: UploadFile = File(...), current_user:
         pipeline.process_file(file_location)
 
         # 2. Extract Structured Metadata
-        print(f"Extracting metadata for bot {bot['name']}...")
+        logging.debug("Extracting metadata for bot %s...", bot['name'])
         metadata = await pipeline.extract_metadata(file_location)
         
         update_data = {
@@ -107,25 +107,28 @@ async def upload_resume(bot_id: str, file: UploadFile = File(...), current_user:
         # 4. ADD TO GLOBAL SEMANTIC SEARCH INDEX
         # We create a rich text representation of the candidate for the vector search to index.
         profile_text = (
-            f"Candidate Name: {update_data['name']}\n"
-            f"Professional Summary: {update_data['summary']}\n"
-            f"Top Skills: {', '.join(update_data['skills'] if update_data['skills'] else [])}\n"
-            f"Experience: {update_data['experience_years']} years."
+            "Candidate Name: {}\n"
+            "Professional Summary: {}\n"
+            "Top Skills: {}\n"
+            "Experience: {} years."
+        ).format(
+            update_data['name'],
+            update_data['summary'],
+            ', '.join(update_data['skills'] if update_data['skills'] else []),
+            update_data['experience_years']
         )
         
         global_index = GlobalRecruiterIndex()
         global_index.add_candidate_profile(bot_id=bot_id, profile_text=profile_text)
 
         return {
-            "message": f"Successfully uploaded and indexed resume for bot '{bot['name']}'",
+            "message": "Successfully uploaded and indexed resume for bot '{}'".format(bot['name']),
             "extracted_data": update_data 
         }
 
-    except Exception as e:
-        print(f"CRITICAL ERROR in upload_resume: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Internal server error during upload: {str(e)}")
+    except Exception:
+        logging.exception("Error in upload_resume")
+        raise HTTPException(status_code=500, detail="An internal server error occurred during upload.")
     finally:
         if os.path.exists(file_location):
             os.remove(file_location)
@@ -174,17 +177,17 @@ async def chat_with_bot_stream(bot_id: str, request_data: dict, authenticated_us
     user_message = request_data.get("message")
     chat_history_raw = request_data.get("chat_history", [])
 
-    print(f"[CHAT/STREAM] Received bot_id={bot_id!r}")
-    print(f"[CHAT/STREAM] authenticated_user role={authenticated_user.get('role')!r}  _id={authenticated_user.get('_id')!r}")
+    logging.debug("[CHAT/STREAM] Received bot_id=%s", bot_id)
+    logging.debug("[CHAT/STREAM] authenticated_user role=%s  _id=%s", authenticated_user.get('role'), authenticated_user.get('_id'))
 
     try:
         obj_id = ObjectId(bot_id)
-    except Exception as e:
-        print(f"[CHAT/STREAM] Invalid ObjectId: {e}")
+    except Exception:
+        logging.debug("[CHAT/STREAM] Invalid ObjectId")
         raise HTTPException(status_code=404, detail="Bot not found")
 
     bot = await bots_collection.find_one({"_id": obj_id})
-    print(f"[CHAT/STREAM] DB lookup result: {bot}")
+    logging.debug("[CHAT/STREAM] DB lookup result found: %s", bool(bot))
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
     
@@ -230,10 +233,10 @@ async def chat_with_bot_stream(bot_id: str, request_data: dict, authenticated_us
                     recruiter_id = str(authenticated_user.get("_id"))
                     await bots_collection.update_one(
                         {"_id": obj_id},
-                        {"$set": {f"assessments.{recruiter_id}": assessment}}
+                        {"$set": {"assessments.{}".format(recruiter_id): assessment}}
                     )
-                except Exception as e:
-                    print(f"Error saving assessment: {e}")
+                except Exception:
+                    logging.exception("Error saving assessment")
 
         asyncio.create_task(analyze_and_save())
 
@@ -264,7 +267,7 @@ async def update_bot(bot_id: str, bot_in: BotUpdate, current_user: User = Depend
     try:
         obj_id = ObjectId(bot_id)
     except Exception as e:
-        print(f"Invalid bot ID in patch endpoint: {bot_id}")
+        logging.debug("Invalid bot ID in patch endpoint: %s", bot_id)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid bot ID")
 
     try:
@@ -276,9 +279,9 @@ async def update_bot(bot_id: str, bot_in: BotUpdate, current_user: User = Depend
         await bots_collection.update_one({"_id": obj_id}, {"$set": update_data})
         updated_bot = await bots_collection.find_one({"_id": obj_id})
         return updated_bot
-    except Exception as e:
-        print(f"Error in update_bot: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal error updating bot: {str(e)}")
+    except Exception:
+        logging.exception("Error in update_bot")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An internal error occurred while updating the bot.")
 
 async def synthesize_speech(text: str, websocket: WebSocket):
     """Generates audio bytes using Edge TTS and sends via WebSocket"""
@@ -304,13 +307,13 @@ async def synthesize_speech(text: str, websocket: WebSocket):
         # Send a special message to tell frontend the speech is done
         await websocket.send_text(json.dumps({"event": "speech_done"}))
     except Exception as e:
-        print(f"TTS Error: {e}")
-        await websocket.send_text(json.dumps({"event": "error", "message": f"TTS Error: {e}"}))
+        logging.exception("TTS Error")
+        await websocket.send_text(json.dumps({"event": "error", "message": "An error occurred during speech synthesis."}))
 
 @router.websocket("/ws/{bot_id}/voice")
 async def websocket_voice_endpoint(websocket: WebSocket, bot_id: str):
     await websocket.accept()
-    print(f"Voice WebSocket connected for bot {bot_id}")
+    logging.debug("Voice WebSocket connected for bot %s", bot_id)
     
     try:
         obj_id = ObjectId(bot_id)
@@ -328,7 +331,7 @@ async def websocket_voice_endpoint(websocket: WebSocket, bot_id: str):
         
         while True:
             audio_bytes = await websocket.receive_bytes()
-            print(f"Received audio chunk: {len(audio_bytes)} bytes")
+            logging.debug("Received audio chunk: %d bytes", len(audio_bytes))
             
             if not groq_client:
                 await websocket.send_text(json.dumps({"event": "error", "message": "Voice STT unavailable (Missing Groq Key)."}))
@@ -390,10 +393,10 @@ async def websocket_voice_endpoint(websocket: WebSocket, bot_id: str):
                     os.remove(temp_audio_path)
                     
     except WebSocketDisconnect:
-        print(f"Voice WebSocket disconnected for bot {bot_id}")
+        logging.debug("Voice WebSocket disconnected for bot %s", bot_id)
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logging.exception("WebSocket error")
         try:
-            await websocket.send_text(json.dumps({"event": "error", "message": f"Error: {str(e)}"}))
-        except:
-            pass
+            await websocket.send_text(json.dumps({"event": "error", "message": "An internal error occurred."}))
+        except Exception:
+            logging.debug("Could not send WebSocket error to client")

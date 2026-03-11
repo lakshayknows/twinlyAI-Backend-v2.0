@@ -44,13 +44,13 @@ class StorageService:
                 thumb_url = pdf_url.replace(".pdf", ".jpg")
                 # Add transformations for a nice card preview
                 parts = thumb_url.split("/upload/")
-                thumb_url = f"{parts[0]}/upload/w_400,h_600,c_fill,pg_1,q_auto/{parts[1]}"
+                thumb_url = "{}/upload/w_400,h_600,c_fill,pg_1,q_auto/{}".format(parts[0], parts[1])
             
             return pdf_url, thumb_url
 
         else:
             # Local Storage
-            local_path = Path("data") / folder / f"{public_id}.pdf"
+            local_path = Path("data") / folder / "{}.pdf".format(public_id)
             local_path.parent.mkdir(parents=True, exist_ok=True)
             
             shutil.copy(file_path, local_path)
@@ -67,4 +67,4 @@ class StorageService:
             # This is tricky if we don't store it in DB. 
             # Better to store 'resume_url' in MongoDB 'bots' collection.
             pass
-        return f"/api/v1/recruiter/resume/{bot_id}" # Fallback to proxy endpoint
+        return "/api/v1/recruiter/resume/{}".format(bot_id)  # Fallback to proxy endpoint

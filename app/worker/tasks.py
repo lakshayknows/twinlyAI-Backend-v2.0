@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import httpx
 import base64
 from datetime import datetime
@@ -42,7 +43,7 @@ def ingest_github_repo(user_id: str, repo_name: str):
         asyncio.set_event_loop(loop)
     
     loop.run_until_complete(_ingest_github_repo_async(user_id, repo_name))
-    return f"Index of {repo_name} completed."
+    return "Index of {} completed.".format(repo_name)
 
 async def _ingest_github_repo_async(user_id: str, repo_name: str):
     # 1. Fetch credentials
@@ -73,13 +74,13 @@ async def _ingest_github_repo_async(user_id: str, repo_name: str):
     
     async with httpx.AsyncClient() as client:
         headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": "Bearer {}".format(token),
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "TwinlyAI-Worker"
         }
         
         # 2. Get repository default branch
-        repo_url = f"https://api.github.com/repos/{repo_name}"
+        repo_url = "https://api.github.com/repos/{}".format(repo_name)
         repo_resp = await client.get(repo_url, headers=headers)
         if repo_resp.status_code != 200:
             await _mark_status(source_id, "error")
@@ -93,7 +94,7 @@ async def _ingest_github_repo_async(user_id: str, repo_name: str):
         smart_indexing = size_kb > 50000 
         
         # 3. Get tree recursively
-        tree_url = f"https://api.github.com/repos/{repo_name}/git/trees/{default_branch}?recursive=1"
+        tree_url = "https://api.github.com/repos/{}/git/trees/{}?recursive=1".format(repo_name, default_branch)
         tree_resp = await client.get(tree_url, headers=headers)
         
         if tree_resp.status_code != 200:
@@ -108,7 +109,7 @@ async def _ingest_github_repo_async(user_id: str, repo_name: str):
             path = item["path"]
             
             # Explicit Exclusions
-            if any(path.startswith(d + "/") or f"/{d}/" in path for d in EXCLUDED_DIRS):
+            if any(path.startswith(d + "/") or "/" + d + "/" in path for d in EXCLUDED_DIRS):
                 continue
             if path.endswith((".lock", ".min.js", ".png", ".jpg", ".jpeg", ".ico")):
                 continue
@@ -128,15 +129,15 @@ async def _ingest_github_repo_async(user_id: str, repo_name: str):
         # 4. Fetch contents and chunk
         qdrant_client = QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
         embeddings = get_embeddings_model()
-        collection_name = f"candidate_{user_id}_source_github"
+        collection_name = "candidate_{}_source_github".format(user_id)
         
         # Create collection if not exists
         if not qdrant_client.collection_exists(collection_name):
             try:
                 # Initialize empty vector store to auto-create collection
                 QdrantVectorStore.from_documents([], embeddings, url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY, collection_name=collection_name)
-            except:
-                pass
+            except Exception:
+                logging.debug("Could not initialize empty vector store collection")
                 
         # Batch fetching to adhere to rate limits (simple approach stringing max concurrent)
         for i in range(0, len(filtered_files), 10):
@@ -185,14 +186,14 @@ async def _ingest_github_repo_async(user_id: str, repo_name: str):
     await _mark_status(source_id, "completed")
 
 async def fetch_file_content(client, repo_name, branch, path):
-    url = f"https://raw.githubusercontent.com/{repo_name}/{branch}/{path}"
+    url = "https://raw.githubusercontent.com/{}/{}/{}".format(repo_name, branch, path)
     resp = await client.get(url)
     if resp.status_code == 200:
         return resp.text
     return None
 
 async def fetch_commits(client, repo_name, user_id, source_id, collection_name, embeddings):
-    url = f"https://api.github.com/repos/{repo_name}/commits?per_page=200"
+    url = "https://api.github.com/repos/{}/commits?per_page=200".format(repo_name)
     resp = await client.get(url)
     if resp.status_code != 200: return
     
@@ -217,7 +218,7 @@ async def fetch_commits(client, repo_name, user_id, source_id, collection_name, 
                 "commit_sha": sha,
                 "created_at": datetime.utcnow()
             }
-            doc = Document(page_content=f"Commit [{sha}]:\n{chunk}", metadata=metadata)
+            doc = Document(page_content="Commit [{}]:\n{}".format(sha, chunk), metadata=metadata)
             QdrantVectorStore.from_documents([doc], embeddings, url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY, collection_name=collection_name)
             await connector_documents_collection.insert_one(metadata)
 

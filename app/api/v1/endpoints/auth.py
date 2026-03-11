@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
@@ -32,10 +34,9 @@ async def create_user(user_in: UserCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="An account with this email already exists.",
         )
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Signup processing error: {str(e)}")
+    except Exception:
+        logging.exception("Signup processing error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred during signup. Please try again.")
 
 @router.post("/login")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -72,7 +73,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         return {"access_token": access_token, "token_type": "bearer"}
     except HTTPException:
         raise
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Login processing error: {str(e)}")
+    except Exception:
+        logging.exception("Login processing error")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred during login. Please try again.")

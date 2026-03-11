@@ -9,7 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 async def fetch_repo_files(owner: str, repo: str, branch: str = "main"):
     # First get the tree recursively
-    url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1"
+    url = "https://api.github.com/repos/{}/{}/git/trees/{}?recursive=1".format(owner, repo, branch)
     
     async with httpx.AsyncClient() as client:
         # User agent is required by GitHub API
@@ -17,7 +17,7 @@ async def fetch_repo_files(owner: str, repo: str, branch: str = "main"):
         response = await client.get(url, headers=headers)
         
         if response.status_code != 200:
-            print(f"Failed to fetch repo: {response.text}")
+            print("Failed to fetch repo: %s" % response.status_code)
             return []
             
         tree = response.json().get("tree", [])
@@ -34,22 +34,22 @@ async def fetch_repo_files(owner: str, repo: str, branch: str = "main"):
         documents = []
         # Limit to 5 files for the POC to avoid excessive API calls
         limit = 5
-        print(f"Found {len(files)} target files. Fetching first {limit} for POC...")
+        print("Found %d target files. Fetching first %d for POC..." % (len(files), limit))
         
         for f in files[:limit]:
             # Fetch raw content
-            raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{f['path']}"
+            raw_url = "https://raw.githubusercontent.com/{}/{}/{}/{}".format(owner, repo, branch, f['path'])
             res = await client.get(raw_url)
             if res.status_code == 200:
-                print(f"  + Fetched: {f['path']}")
+                print("  + Fetched: %s" % f['path'])
                 documents.append(
                     Document(
                         page_content=res.text, 
-                        metadata={"source": f['path'], "repo": f"{owner}/{repo}"}
+                        metadata={"source": f['path'], "repo": "{}/{}".format(owner, repo)}
                     )
                 )
             else:
-                print(f"  - Failed to fetch: {f['path']}")
+                print("  - Failed to fetch: %s" % f['path'])
                 
     return documents
 
@@ -58,7 +58,7 @@ async def main():
     owner = "KurianJose7586"
     repo = "twinlyAI-Backend-v2.0"
     
-    print(f"\n[1] Fetching target repository {owner}/{repo}...")
+    print("\n[1] Fetching target repository %s/%s..." % (owner, repo))
     docs = await fetch_repo_files(owner, repo)
     if not docs:
         print("No documents fetched. Exiting.")
@@ -67,7 +67,7 @@ async def main():
     print("\n[2] Chunking documents...")
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     splits = splitter.split_documents(docs)
-    print(f"Split {len(docs)} documents into {len(splits)} chunks.")
+    print("Split %d documents into %d chunks." % (len(docs), len(splits)))
     
     print("\n[3] Initializing Embeddings & Qdrant In-Memory Vector Store...")
     # Using a small fast local embedding model
@@ -83,13 +83,13 @@ async def main():
     
     print("\n[4] Querying the Vector Database...")
     query = "What endpoints does the application have?"
-    print(f"Query: '{query}'")
+    print("Query: '%s'" % query)
     
     results = qdrant.similarity_search(query, k=2)
     
     print("\n--- Retrieval Results ---")
     for i, r in enumerate(results, 1):
-        print(f"\nResult {i} (Source: {r.metadata['source']})")
+        print("\nResult %d (Source: %s)" % (i, r.metadata['source']))
         print("-" * 40)
         # Print first 250 chars of the chunk
         snippet = r.page_content.strip()

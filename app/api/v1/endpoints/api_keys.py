@@ -22,7 +22,7 @@ async def create_api_key(
     """
     Generate a new API key for the current user.
     """
-    new_key = f"ta_{secrets.token_urlsafe(32)}"
+    new_key = "ta_" + secrets.token_urlsafe(32)
     hashed_key = hash_api_key(new_key)
     
     api_key_doc = {

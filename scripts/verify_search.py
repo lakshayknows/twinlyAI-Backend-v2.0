@@ -18,23 +18,23 @@ async def verify_search():
     
     print("🔍 Testing Global Search Relevance...")
     for query in test_queries:
-        print(f"\nQuery: '{query}'")
+        print("\nQuery: '%s'" % query)
         bot_ids = index.semantic_search(query, k=5)
         
         if not bot_ids:
             print("  ❌ No results found.")
             continue
             
-        print(f"  ✅ Found {len(bot_ids)} results.")
+        print("  ✅ Found %d results." % len(bot_ids))
         # Fetch names from DB
         for b_id in bot_ids:
             try:
                 from bson import ObjectId
                 bot = await bots_collection.find_one({"_id": ObjectId(b_id)})
                 if bot:
-                    print(f"    - {bot['name']} ({bot.get('skills', [])[:3]}...) from {bot.get('summary', '').split('student from ')[-1].split(' specializing')[0]}")
+                    print("    - %s (%s...)" % (bot['name'], bot.get('skills', [])[:3]))
             except Exception as e:
-                print(f"    - Error fetching bot {b_id}: {e}")
+                print("    - Error fetching bot %s" % b_id)
 
 if __name__ == "__main__":
     asyncio.run(verify_search())
