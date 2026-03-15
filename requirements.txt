@@ -37,4 +37,7 @@ httpx
 python-multipart
 Authlib
 itsdangerous
-edge-tts
+
+
+# Background Tasks (New)
+celery
