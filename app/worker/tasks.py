@@ -1,9 +1,7 @@
 import asyncio
 import logging
 import httpx
-import base64
 from datetime import datetime
-import re
 from celery import shared_task
 
 from app.core.celery_app import celery_app

@@ -9,8 +9,6 @@ from app.core.security import encrypt_token, decrypt_token
 from app.api.v1.deps import get_current_user
 from app.schemas.user import User
 from app.worker.tasks import ingest_github_repo
-import hmac
-import hashlib
 
 router = APIRouter()
 oauth = OAuth()

@@ -1,12 +1,10 @@
 # app/core/rag_pipeline.py
 
-import os
 import json
 import logging
 from pathlib import Path
 import pdfplumber
 from docx import Document as DocxDocument
-import shutil
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_qdrant import QdrantVectorStore
