@@ -41,3 +41,16 @@ itsdangerous
 
 # Background Tasks (New)
 celery
+redis
+
+# Cloud Storage
+cloudinary
+
+# AI Agent Framework
+langgraph
+
+# Text-to-Speech
+edge-tts
+
+# PDF Generation (for seeding testing scripts)
+reportlab
