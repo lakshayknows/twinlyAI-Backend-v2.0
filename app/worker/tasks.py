@@ -3,7 +3,6 @@ import logging
 import httpx
 import base64
 from datetime import datetime
-from bs4 import BeautifulSoup
 import re
 from celery import shared_task
 
